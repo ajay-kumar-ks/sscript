@@ -6,7 +6,7 @@ import com.ajay.sscript.service.EncryptService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/encrypt")
 public class EncryptController {
 
     private final EncryptService encryptService;
@@ -15,15 +15,15 @@ public class EncryptController {
         this.encryptService = encryptService;
     }
 
-    @PostMapping("/encrypt")
+    @PostMapping
     public EncryptResponse encrypt(@RequestBody EncryptRequest request) {
 
-        String result = encryptService.encrypt(request.getText());
+        String encrypted = encryptService.encrypt(request.getText());
 
         EncryptResponse response = new EncryptResponse();
         response.setOriginalText(request.getText());
+        response.setEncryptedText(encrypted);
         response.setKey(request.getKey());
-        response.setEncryptedText(result);
 
         return response;
     }
