@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class EncryptService {
@@ -65,91 +67,210 @@ public class EncryptService {
     // 🔹 Time-Based Layer (SECOND ENCRYPTION)
     private String applyTimeLayer(String text) {
 
-        String timeSeed = LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        LocalDateTime now = LocalDateTime.now();
 
-        int[] parts = extractTimeParts(timeSeed);
-
-        int length = text.length();
-        StringBuilder result = new StringBuilder();
-        int previousValue = length;
-
-        for (int i = 0; i < length; i++) {
-
-            char current = text.charAt(i);
-            int currentIndex = CryptoUtil.indexOf(current);
-
-            int dynamicKey = generateTimeDynamicKey(length, i, previousValue, parts);
-
-            int newIndex;
-
-            if (i % 2 == 0) {
-                newIndex = (currentIndex + dynamicKey) % CryptoUtil.CHAR_SET.length;
-            } else {
-                newIndex = currentIndex - dynamicKey;
-                if (newIndex < 0) {
-                    newIndex += CryptoUtil.CHAR_SET.length;
-                }
-            }
-
-            result.append(CryptoUtil.CHAR_SET[newIndex]);
-            previousValue = newIndex;
-        }
-
-        // Attach timeSeed so we can decrypt later
-        return result.toString() + "|" + timeSeed;
-    }
-
-    private int[] extractTimeParts(String timeSeed) {
-
-        String yyyy = timeSeed.substring(0, 4);
-        String MM   = timeSeed.substring(4, 6);
-        String dd   = timeSeed.substring(6, 8);
-        String HH   = timeSeed.substring(8, 10);
-        String mm   = timeSeed.substring(10, 12);
-        String ss   = timeSeed.substring(12, 14);
+        String dd = reverse(String.format("%02d", now.getDayOfMonth()));
+        String MM = reverse(String.format("%02d", now.getMonthValue()));
+        String yyyy = reverse(String.valueOf(now.getYear()));
+        String HH = reverse(String.format("%02d", now.getHour()));
+        String mm = reverse(String.format("%02d", now.getMinute()));
+        String ss = reverse(String.format("%02d", now.getSecond()));
 
         String yy1 = yyyy.substring(0, 2);
         String yy2 = yyyy.substring(2, 4);
 
-        yy1 = new StringBuilder(yy1).reverse().toString();
-        yy2 = new StringBuilder(yy2).reverse().toString();
-        MM  = new StringBuilder(MM).reverse().toString();
-        dd  = new StringBuilder(dd).reverse().toString();
-        HH  = new StringBuilder(HH).reverse().toString();
-        mm  = new StringBuilder(mm).reverse().toString();
-        ss  = new StringBuilder(ss).reverse().toString();
+        // 🔥 Direct mixed order (no left/right)
+        String[] blocks = { dd, HH, MM, mm, yy1, ss, yy2 };
+        // String[] blocks = { "71", "90", "21", "45", "02", "03", "42" };
+        // String[] blocks = { "11", "22", "33", "44", "55", "66", "77" };
 
-        return new int[] {
-                Integer.parseInt(yy1),
-                Integer.parseInt(yy2),
-                Integer.parseInt(MM),
-                Integer.parseInt(dd),
-                Integer.parseInt(HH),
-                Integer.parseInt(mm),
-                Integer.parseInt(ss)
-        };
+        int[] keys = convertBlocksToKeys(blocks);
+
+        String encrypted = encryptWithTimeKey(text, keys);
+        // int sum = 0;
+        // for (int i = 0; i < blocks.length; i++) {
+        //     sum += Integer.parseInt(blocks[i]);
+        // }
+        // sum = sum%10;
+        // fullTimeEncrypt(encrypted,sum);
+
+        return attachBlocksCenterExpand(encrypted, blocks);
+    }
+    // private String fullTimeEncrypt(String encrypted,int sum){
+
+    // }
+
+    private int[] convertBlocksToKeys(String[] blocks) {
+
+        int[] keys = new int[blocks.length];
+
+        for (int i = 0; i < blocks.length; i++) {
+
+            int sum = 0;
+            for (char c : blocks[i].toCharArray()) {
+                sum += Character.getNumericValue(c);
+            }
+
+            keys[i] = sum;
+        }
+
+        return keys;
     }
 
-    private int generateTimeDynamicKey(int length, int index, int previousValue, int[] parts) {
+    private String encryptWithTimeKey(String text, int[] keys) {
 
-        int yySum = parts[0] + parts[1];
-        int MM    = parts[2];
-        int dd    = parts[3];
-        int HH    = parts[4];
-        int mm    = parts[5];
-        int ss    = parts[6];
+        StringBuilder result = new StringBuilder();
 
-        int dynamicKey = (
-                (length * (yySum + MM + HH + ss))
-              + (index * (yySum + dd + mm))
-              + previousValue
-        ) % CryptoUtil.CHAR_SET.length;
+        int previous = text.length();
+        int keyIndex = 0;
 
-        if (dynamicKey < 0)
-            dynamicKey += CryptoUtil.CHAR_SET.length;
+        for (int i = 0; i < text.length(); i++) {
 
-        return dynamicKey;
+            int currentIndex =
+                    CryptoUtil.indexOfMixed(text.charAt(i));
+
+            if (currentIndex == -1) {
+                throw new IllegalArgumentException(
+                        "Invalid character in time layer: "
+                                + text.charAt(i));
+            }
+
+            int dynamic = keys[keyIndex] + previous;
+
+            int newIndex;
+
+            // alternate direction encryption
+            if (i % 2 == 0) {
+                newIndex = currentIndex - dynamic;
+            } else {
+                newIndex = currentIndex + dynamic;
+            }
+
+            int setLength = CryptoUtil.CHAR_SET_MIXED.length;
+
+            newIndex =
+                    (newIndex % setLength + setLength) % setLength;
+
+            result.append(
+                    CryptoUtil.CHAR_SET_MIXED[newIndex]
+            );
+
+            previous = newIndex;
+            keyIndex = (keyIndex + 1) % keys.length;
+        }
+
+        return result.toString();
+    }
+    private String attachBlocksCenterExpand(String text, String[] blocks) {
+
+        int n = text.length();
+        int N = blocks.length;
+        int total = n + N;
+
+        StringBuilder result = new StringBuilder();
+
+        // ================= >= 9 =================
+        if (n >= 9) {
+
+            // ---------- ODD ----------
+            if (n % 2 == 1) {
+
+                int mid = n / 2;
+
+                String first =
+                        blocks[2] + text.charAt(0) + blocks[3];
+
+                String center =
+                        blocks[0] + text.charAt(mid) + blocks[1];
+
+                String last =
+                        blocks[4] + text.charAt(n - 1) + blocks[5];
+
+                String remain = blocks[6];
+
+                result.append(first);
+                result.append(text.substring(1, mid));
+                result.append(center);
+                result.append(text.substring(mid + 1, n - 1));
+                result.append(last);
+                result.append(remain);
+
+                return result.toString();
+            }
+
+            // ---------- EVEN ----------
+            else {
+
+                int mid = n / 2;
+
+                char e = text.charAt(mid - 1);
+                char f = text.charAt(mid);
+
+                String first =
+                        blocks[4] + text.charAt(0) + blocks[3];
+
+                String center =
+                        blocks[1] + e + blocks[0] + f + blocks[2];
+
+                String last =
+                        blocks[5] + text.charAt(n - 1);
+
+                String remain = blocks[6];
+
+                result.append(first);
+                result.append(text.substring(1, mid - 1));
+                result.append(center);
+                result.append(text.substring(mid + 1, n - 1));
+                result.append(last);
+                result.append(remain);
+
+                return result.toString();
+            }
+        }
+
+        // ================= < 9 =================
+        else {
+
+            int start = (N + 2 - n) / 2;
+
+            java.util.Set<Integer> letterPositions =
+                    new java.util.HashSet<>();
+
+            for (int i = start; i < start + 2 * n; i += 2)
+                letterPositions.add(i);
+
+            java.util.List<Integer> numSeq =
+                    new java.util.ArrayList<>();
+
+            if (n % 2 == 1) {
+                for (int i = N; i >= 1; i -= 2)
+                    numSeq.add(i);
+                for (int i = 2; i < N; i += 2)
+                    numSeq.add(i);
+            } else {
+                for (int i = N - 1; i >= 1; i -= 2)
+                    numSeq.add(i);
+                for (int i = 1; i <= N; i += 2)
+                    numSeq.add(i);
+            }
+
+            int numIdx = 0;
+            int letIdx = 0;
+
+            for (int i = 0; i < total; i++) {
+
+                if (letterPositions.contains(i)) {
+                    result.append(text.charAt(letIdx++));
+                } else {
+                    result.append(blocks[numSeq.get(numIdx++) - 1]);
+                }
+            }
+        }
+
+        return result.toString();
+    }
+    private String reverse(String s) {
+        return new StringBuilder(s).reverse().toString();
     }
 
     private void validateInput(String input) {

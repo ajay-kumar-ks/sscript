@@ -9,9 +9,47 @@ public class CryptoUtil {
         '#','@','!','$','%','*','&','+','=','-','?','/','>','.', '^','<'
     };
 
+    public static final char[] CHAR_SET_MIXED = {
+        'A','0','a',
+        'B','1','b',
+        'C','2','c',
+        'D','3','d',
+        'E','4','e',
+        'F','5','f',
+        'G','6','g',
+        'H','7','h',
+        'I','8','i',
+        'J','9','j',
+        'K','#','k',
+        'L','@','l',
+        'M','!','m',
+        'N','$','n',
+        'O','%','o',
+        'P','*','p',
+        'Q','&','q',
+        'R','+','r',
+        'S','=','s',
+        'T','-','t',
+        'U','?','u',
+        'V','/','v',
+        'W','>','w',
+        'X','.','x',
+        'Y','^','y',
+        'Z','<','z'
+    };
+
     public static int indexOf(char c) {
         for (int i = 0; i < CHAR_SET.length; i++) {
             if (CHAR_SET[i] == c) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static int indexOfMixed(char c) {
+        for (int i = 0; i < CHAR_SET_MIXED.length; i++) {
+            if (CHAR_SET_MIXED[i] == c) {
                 return i;
             }
         }
