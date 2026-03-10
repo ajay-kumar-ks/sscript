@@ -5,6 +5,7 @@ import com.ajay.sscript.dto.DecryptResponse;
 import com.ajay.sscript.service.DecryptService;
 import org.springframework.web.bind.annotation.*;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/v1/decrypt")
 public class DecryptController {

@@ -19,8 +19,8 @@ public class DecryptService {
                 }
 
                 // STEP 1 → remove time blocks
-                System.out.println("hiii " + encryptedText);
-                ExtractResult extracted = removeBlocksCenterExpand(encryptedText);
+                String secEncrypt = fullTimeDecrypt(encryptedText);
+                ExtractResult extracted = removeBlocksCenterExpand(secEncrypt);
                 
 
                 // STEP 2 → reverse time encryption
@@ -31,6 +31,53 @@ public class DecryptService {
                 // STEP 3 → reverse base encryption
                 return basicDecrypt(timeDecrypted);
         }
+
+        private String fullTimeDecrypt(String encrypted) {
+
+                StringBuilder result = new StringBuilder();
+
+                // extract sum
+                char first = encrypted.charAt(0);
+                char last = encrypted.charAt(encrypted.length() - 1);
+
+                int sum = Integer.parseInt("" + first + last);
+
+                // remove first and last
+                String text = encrypted.substring(1, encrypted.length() - 1);
+
+                int previous = text.length();
+
+                for (int i = 0; i < text.length(); i++) {
+
+                int encryptedIndex = CryptoUtil.indexOfMixed(text.charAt(i));
+
+                if (encryptedIndex == -1) {
+                        throw new IllegalArgumentException(
+                                "Invalid character in encrypted text: " + text.charAt(i));
+                }
+
+                int dynamic = sum + previous;
+
+                int originalIndex;
+
+                // reverse direction
+                if (i % 2 == 0) {
+                        originalIndex = encryptedIndex + dynamic;
+                } else {
+                        originalIndex = encryptedIndex - dynamic;
+                }
+
+                int setLength = CryptoUtil.CHAR_SET_MIXED.length;
+
+                originalIndex = (originalIndex % setLength + setLength) % setLength;
+
+                result.append(CryptoUtil.CHAR_SET_MIXED[originalIndex]);
+
+                previous = encryptedIndex; // important
+                }
+
+                return result.toString();
+                }
 
         // =====================================================
         // BASIC DECRYPT (reverse of basicEncrypt)

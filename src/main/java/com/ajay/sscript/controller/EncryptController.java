@@ -5,6 +5,7 @@ import com.ajay.sscript.dto.EncryptResponse;
 import com.ajay.sscript.service.EncryptService;
 import org.springframework.web.bind.annotation.*;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/v1/encrypt")
 public class EncryptController {

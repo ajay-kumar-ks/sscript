@@ -80,25 +80,66 @@ public class EncryptService {
         String yy2 = yyyy.substring(2, 4);
 
         // 🔥 Direct mixed order (no left/right)
-        String[] blocks = { dd, HH, MM, mm, yy1, ss, yy2 };
         // String[] blocks = { "71", "90", "21", "45", "02", "03", "42" };
         // String[] blocks = { "11", "22", "33", "44", "55", "66", "77" };
+        String[] blocks = { dd, HH, MM, mm, yy1, ss, yy2 };
 
         int[] keys = convertBlocksToKeys(blocks);
 
         String encrypted = encryptWithTimeKey(text, keys);
-        // int sum = 0;
-        // for (int i = 0; i < blocks.length; i++) {
-        //     sum += Integer.parseInt(blocks[i]);
-        // }
-        // sum = sum%10;
-        // fullTimeEncrypt(encrypted,sum);
+        int sum = 0;
+        for (int i = 0; i < blocks.length; i++) {
+            sum += Integer.parseInt(blocks[i]);
+        }
+        sum = sum % 100;
+        String ecrypt2 = attachBlocksCenterExpand(encrypted, blocks);
 
-        return attachBlocksCenterExpand(encrypted, blocks);
+        return fullTimeEncrypt(ecrypt2, sum);
     }
-    // private String fullTimeEncrypt(String encrypted,int sum){
 
-    // }
+    private String fullTimeEncrypt(String text, int sum) {
+
+        StringBuilder result = new StringBuilder();
+        String twoDigit = String.format("%02d", sum); // 04
+
+        char first = twoDigit.charAt(0); // '0'
+        char second = twoDigit.charAt(1); // '4'
+        result.append(first);
+        int previous = text.length();
+
+        for (int i = 0; i < text.length(); i++) {
+
+            int currentIndex = CryptoUtil.indexOfMixed(text.charAt(i));
+
+            if (currentIndex == -1) {
+                throw new IllegalArgumentException(
+                        "Invalid character in time layer: "
+                                + text.charAt(i));
+            }
+
+            int dynamic = sum + previous;
+
+            int newIndex;
+
+            // alternate direction encryption
+            if (i % 2 == 0) {
+                newIndex = currentIndex - dynamic;
+            } else {
+                newIndex = currentIndex + dynamic;
+            }
+
+            int setLength = CryptoUtil.CHAR_SET_MIXED.length;
+
+            newIndex = (newIndex % setLength + setLength) % setLength;
+
+            result.append(
+                    CryptoUtil.CHAR_SET_MIXED[newIndex]);
+
+            previous = newIndex;
+        }
+        result.append(second);
+        return result.toString();
+    }
 
     private int[] convertBlocksToKeys(String[] blocks) {
 
@@ -126,8 +167,7 @@ public class EncryptService {
 
         for (int i = 0; i < text.length(); i++) {
 
-            int currentIndex =
-                    CryptoUtil.indexOfMixed(text.charAt(i));
+            int currentIndex = CryptoUtil.indexOfMixed(text.charAt(i));
 
             if (currentIndex == -1) {
                 throw new IllegalArgumentException(
@@ -148,12 +188,10 @@ public class EncryptService {
 
             int setLength = CryptoUtil.CHAR_SET_MIXED.length;
 
-            newIndex =
-                    (newIndex % setLength + setLength) % setLength;
+            newIndex = (newIndex % setLength + setLength) % setLength;
 
             result.append(
-                    CryptoUtil.CHAR_SET_MIXED[newIndex]
-            );
+                    CryptoUtil.CHAR_SET_MIXED[newIndex]);
 
             previous = newIndex;
             keyIndex = (keyIndex + 1) % keys.length;
@@ -161,6 +199,7 @@ public class EncryptService {
 
         return result.toString();
     }
+
     private String attachBlocksCenterExpand(String text, String[] blocks) {
 
         int n = text.length();
@@ -177,14 +216,11 @@ public class EncryptService {
 
                 int mid = n / 2;
 
-                String first =
-                        blocks[2] + text.charAt(0) + blocks[3];
+                String first = blocks[2] + text.charAt(0) + blocks[3];
 
-                String center =
-                        blocks[0] + text.charAt(mid) + blocks[1];
+                String center = blocks[0] + text.charAt(mid) + blocks[1];
 
-                String last =
-                        blocks[4] + text.charAt(n - 1) + blocks[5];
+                String last = blocks[4] + text.charAt(n - 1) + blocks[5];
 
                 String remain = blocks[6];
 
@@ -206,14 +242,11 @@ public class EncryptService {
                 char e = text.charAt(mid - 1);
                 char f = text.charAt(mid);
 
-                String first =
-                        blocks[4] + text.charAt(0) + blocks[3];
+                String first = blocks[4] + text.charAt(0) + blocks[3];
 
-                String center =
-                        blocks[1] + e + blocks[0] + f + blocks[2];
+                String center = blocks[1] + e + blocks[0] + f + blocks[2];
 
-                String last =
-                        blocks[5] + text.charAt(n - 1);
+                String last = blocks[5] + text.charAt(n - 1);
 
                 String remain = blocks[6];
 
@@ -233,14 +266,12 @@ public class EncryptService {
 
             int start = (N + 2 - n) / 2;
 
-            java.util.Set<Integer> letterPositions =
-                    new java.util.HashSet<>();
+            java.util.Set<Integer> letterPositions = new java.util.HashSet<>();
 
             for (int i = start; i < start + 2 * n; i += 2)
                 letterPositions.add(i);
 
-            java.util.List<Integer> numSeq =
-                    new java.util.ArrayList<>();
+            java.util.List<Integer> numSeq = new java.util.ArrayList<>();
 
             if (n % 2 == 1) {
                 for (int i = N; i >= 1; i -= 2)
@@ -269,13 +300,15 @@ public class EncryptService {
 
         return result.toString();
     }
+
     private String reverse(String s) {
         return new StringBuilder(s).reverse().toString();
     }
 
     private void validateInput(String input) {
         for (char c : input.toCharArray()) {
-            if (c == ' ') continue;
+            if (c == ' ')
+                continue;
 
             if (!Character.isLowerCase(c) && !Character.isDigit(c)) {
                 throw new IllegalArgumentException("Invalid character: " + c);
